@@ -1,0 +1,69 @@
+---
+
+- when: i2d_add == "yes"
+  block:
+    - name: get current unixtimestamp
+      command: date -d "{{ i2d_from }}" +%s
+      environment:
+        TZ: "{{ i2d_timezone }}"
+      register: now
+      changed_when: now.stdout | length == 0
+
+    - name: get future unixtimestamp
+      command: date -d "{{ i2d_until }}" +%s
+      environment:
+        TZ: "{{ i2d_timezone }}"
+      register: then
+      changed_when: then.stdout | length == 0
+
+    - name: Set Host Downtime
+      uri:
+        url: "https://{{ i2d_icinga }}:{{ i2d_port }}/v1/actions/schedule-downtime"
+        user: "{{ i2d_user }}"
+        password: "{{ i2d_pass }}"
+        method: POST
+        headers:
+          Accept: 'application/json'
+        body:
+          author: "{{ i2d_author }}"
+          comment: "{{ i2d_msg }}"
+          end_time: "{{ then.stdout }}"
+          filter: "match(\"*{{ i2d_host }}*\", host.name)"
+          start_time: "{{ now.stdout }}"
+          type: "{{ item }}"
+        force_basic_auth: yes
+        status_code: [200, 500]
+        body_format: json
+        return_content: 'yes'
+        validate_certs: 'no'
+      loop:
+        - Host
+        - Service
+      register: rv
+
+    - debug: msg={{ item.content }}
+      loop: "{{ rv.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+- when: i2d_remove == "yes"
+  block:
+    - name: Remove Host Downtime
+      uri:
+        url: "https://{{ i2d_icinga }}:{{ i2d_port }}/v1/actions/remove-downtime"
+        user: "{{ i2d_user }}"
+        password: "{{ i2d_pass }}"
+        method: POST
+        headers:
+          Accept: 'application/json'
+        body:
+          filter:  "match(\"*{{ i2d_host }}*\", host.name)"
+          type: "Downtime"
+        force_basic_auth: yes
+        status_code: [200, 500]
+        body_format: json
+        validate_certs: 'no'
+        return_content: 'yes'
+      register: rv
+
+    - debug: msg={{ rv.json }}

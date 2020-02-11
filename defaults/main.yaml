@@ -1,0 +1,17 @@
+---
+
+i2d_icinga: ''
+i2d_port: 5665
+i2d_user: 'icinga2'
+i2d_pass: 'icinga2'
+
+i2d_host: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
+i2d_msg: 'downtimed with ansible-role icinga2-downtime'
+i2d_author: "{{ lookup('env','USER') }}"
+
+i2d_from: 'now'
+i2d_until: '+2 hours'
+i2d_timezone: "Europe/Berlin"
+
+i2d_add: 'no'
+i2d_remove: 'no'
